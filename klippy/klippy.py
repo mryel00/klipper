@@ -9,18 +9,21 @@ import util, reactor, queuelogger, msgproto
 import gcode, configfile, pins, mcu, toolhead, webhooks
 
 message_ready = "Printer is ready"
+code_ready = "1"
 
 message_startup = """
 Printer is not ready
 The klippy host software is attempting to connect.  Please
 retry in a few moments.
 """
+code_startup = "2"
 
 message_restart = """
 Once the underlying issue is corrected, use the "RESTART"
 command to reload the config and restart the host software.
 Printer is halted
 """
+code_restart = "3"
 
 message_protocol_error1 = """
 This is frequently caused by running an older version of the
@@ -32,6 +35,7 @@ message_protocol_error2 = """
 Once the underlying issue is corrected, use the "RESTART"
 command to reload the config and restart the host software.
 """
+code_protocol_error = "4"
 
 message_mcu_connect_error = """
 Once the underlying issue is corrected, use the
@@ -39,6 +43,7 @@ Once the underlying issue is corrected, use the
 config, and restart the host software.
 Error configuring printer
 """
+code_mcu_connect_error = "5"
 
 message_shutdown = """
 Once the underlying issue is corrected, use the
@@ -46,6 +51,7 @@ Once the underlying issue is corrected, use the
 config, and restart the host software.
 Printer is shutdown
 """
+code_shutdown = "6"
 
 class Printer:
     config_error = configfile.error
@@ -56,6 +62,7 @@ class Printer:
         self.reactor = main_reactor
         self.reactor.register_callback(self._connect)
         self.state_message = message_startup
+        self.state_code = code_startup
         self.in_shutdown_state = False
         self.run_result = None
         self.event_handlers = {}
@@ -76,12 +83,13 @@ class Printer:
             category = "shutdown"
         else:
             category = "error"
-        return self.state_message, category
+        return self.state_message, category, self.state_code
     def is_shutdown(self):
         return self.in_shutdown_state
-    def _set_state(self, msg):
+    def _set_state(self, msg, code=0):
         if self.state_message in (message_ready, message_startup):
             self.state_message = msg
+            self.state_code = code
         if (msg != message_ready
             and self.start_args.get('debuginput') is not None):
             self.request_exit('error_exit')
@@ -180,25 +188,25 @@ class Printer:
                 cb()
         except (self.config_error, pins.error) as e:
             logging.exception("Config error")
-            self._set_state("%s\n%s" % (str(e), message_restart))
+            self._set_state("%s\n%s" % (str(e), message_restart), code_restart)
             return
         except msgproto.error as e:
             logging.exception("Protocol error")
-            self._set_state(self._build_protocol_error_message(e))
+            self._set_state(self._build_protocol_error_message(e), code_protocol_error)
             util.dump_mcu_build()
             return
         except mcu.error as e:
             logging.exception("MCU error during connect")
-            self._set_state("%s%s" % (str(e), message_mcu_connect_error))
+            self._set_state("%s%s" % (str(e), message_mcu_connect_error), code_mcu_connect_error)
             util.dump_mcu_build()
             return
         except Exception as e:
             logging.exception("Unhandled exception during connect")
             self._set_state("Internal error during connect: %s\n%s"
-                            % (str(e), message_restart,))
+                            % (str(e), message_restart,), code_restart)
             return
         try:
-            self._set_state(message_ready)
+            self._set_state(message_ready, code_ready)
             for cb in self.event_handlers.get("klippy:ready", []):
                 if self.state_message is not message_ready:
                     return
@@ -246,7 +254,7 @@ class Printer:
             return
         logging.error("Transition to shutdown state: %s", msg)
         self.in_shutdown_state = True
-        self._set_state("%s%s" % (msg, message_shutdown))
+        self._set_state("%s%s" % (msg, message_shutdown), code_shutdown)
         for cb in self.event_handlers.get("klippy:shutdown", []):
             try:
                 cb()

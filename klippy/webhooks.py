@@ -351,7 +351,7 @@ class WebHooks:
         client_info = web_request.get_dict('client_info', None)
         if client_info is not None:
             web_request.get_client_connection().set_client_info(client_info)
-        state_message, state = self.printer.get_state_message()
+        state_message, state, state_code = self.printer.get_state_message()
         src_path = os.path.dirname(__file__)
         klipper_path = os.path.normpath(os.path.join(src_path, ".."))
         response = {'state': state,
@@ -361,7 +361,8 @@ class WebHooks:
                     'python_path': sys.executable,
                     'process_id': os.getpid(),
                     'user_id': os.getuid(),
-                    'group_id': os.getgid()}
+                    'group_id': os.getgid(),
+                    'state_code': state_code}
         start_args = self.printer.get_start_args()
         for sa in ['log_file', 'config_file', 'software_version', 'cpu_info']:
             response[sa] = start_args.get(sa)
@@ -390,8 +391,8 @@ class WebHooks:
         return cb
 
     def get_status(self, eventtime):
-        state_message, state = self.printer.get_state_message()
-        return {'state': state, 'state_message': state_message}
+        state_message, state, state_code = self.printer.get_state_message()
+        return {'state': state, 'state_message': state_message, 'state_code': state_code}
 
     def stats(self, eventtime):
         return self.sconn.stats(eventtime)
