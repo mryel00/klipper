@@ -9,21 +9,21 @@ import util, reactor, queuelogger, msgproto
 import gcode, configfile, pins, mcu, toolhead, webhooks
 
 message_ready = "Printer is ready"
-code_ready = "1"
+code_ready = 200
 
 message_startup = """
 Printer is not ready
 The klippy host software is attempting to connect.  Please
 retry in a few moments.
 """
-code_startup = "2"
+code_startup = 100
 
 message_restart = """
 Once the underlying issue is corrected, use the "RESTART"
 command to reload the config and restart the host software.
 Printer is halted
 """
-code_restart = "3"
+code_restart = 300
 
 message_protocol_error1 = """
 This is frequently caused by running an older version of the
@@ -35,7 +35,7 @@ message_protocol_error2 = """
 Once the underlying issue is corrected, use the "RESTART"
 command to reload the config and restart the host software.
 """
-code_protocol_error = "4"
+code_protocol_error = 400
 
 message_mcu_connect_error = """
 Once the underlying issue is corrected, use the
@@ -43,7 +43,7 @@ Once the underlying issue is corrected, use the
 config, and restart the host software.
 Error configuring printer
 """
-code_mcu_connect_error = "5"
+code_mcu_connect_error = 500
 
 message_shutdown = """
 Once the underlying issue is corrected, use the
@@ -51,7 +51,7 @@ Once the underlying issue is corrected, use the
 config, and restart the host software.
 Printer is shutdown
 """
-code_shutdown = "6"
+code_shutdown = 600
 
 class Printer:
     config_error = configfile.error
@@ -63,6 +63,7 @@ class Printer:
         self.reactor.register_callback(self._connect)
         self.state_message = message_startup
         self.state_code = code_startup
+        self.state_variables = ()
         self.in_shutdown_state = False
         self.run_result = None
         self.event_handlers = {}
@@ -83,13 +84,14 @@ class Printer:
             category = "shutdown"
         else:
             category = "error"
-        return self.state_message, category, self.state_code
+        return self.state_message, category, self.state_code, self.state_variables
     def is_shutdown(self):
         return self.in_shutdown_state
-    def _set_state(self, msg, code=0):
+    def _set_state(self, msg, code=0, *variables):
         if self.state_message in (message_ready, message_startup):
             self.state_message = msg
-            self.state_code = code
+            self.state_code = str(code)
+            self.state_variables = variables
         if (msg != message_ready
             and self.start_args.get('debuginput') is not None):
             self.request_exit('error_exit')
@@ -188,7 +190,7 @@ class Printer:
                 cb()
         except (self.config_error, pins.error) as e:
             logging.exception("Config error")
-            self._set_state("%s\n%s" % (str(e), message_restart), code_restart)
+            self._set_state("%s\n%s" % (str(e), message_restart), code_restart+e.to_tuple()[1], *e.to_tuple()[2])
             return
         except msgproto.error as e:
             logging.exception("Protocol error")
@@ -214,7 +216,7 @@ class Printer:
         except Exception as e:
             logging.exception("Unhandled exception during ready callback")
             self.invoke_shutdown("Internal error during ready callback: %s"
-                                 % (str(e),))
+                                 % (str(e),), 2, str(e))
     def run(self):
         systime = time.time()
         monotime = self.reactor.monotonic()
@@ -229,7 +231,7 @@ class Printer:
             # Exception from a reactor callback - try to shutdown
             try:
                 self.reactor.register_callback((lambda e:
-                                                self.invoke_shutdown(msg)))
+                                                self.invoke_shutdown(msg, 1)))
                 self.reactor.run()
             except:
                 logging.exception("Repeat unhandled exception during run")
@@ -249,12 +251,12 @@ class Printer:
             logging.info(info)
         if self.bglogger is not None:
             self.bglogger.set_rollover_info(name, info)
-    def invoke_shutdown(self, msg):
+    def invoke_shutdown(self, msg, code_shutdown=0, *variables):
         if self.in_shutdown_state:
             return
         logging.error("Transition to shutdown state: %s", msg)
         self.in_shutdown_state = True
-        self._set_state("%s%s" % (msg, message_shutdown), code_shutdown)
+        self._set_state("%s%s" % (msg, message_shutdown), code_shutdown, *variables)
         for cb in self.event_handlers.get("klippy:shutdown", []):
             try:
                 cb()
@@ -262,9 +264,9 @@ class Printer:
                 logging.exception("Exception during shutdown handler")
         logging.info("Reactor garbage collection: %s",
                      self.reactor.get_gc_stats())
-    def invoke_async_shutdown(self, msg):
+    def invoke_async_shutdown(self, msg, code_shutdown=0, *variables):
         self.reactor.register_async_callback(
-            (lambda e: self.invoke_shutdown(msg)))
+            (lambda e: self.invoke_shutdown(msg, code_shutdown, *variables)))
     def register_event_handler(self, event, callback):
         self.event_handlers.setdefault(event, []).append(callback)
     def send_event(self, event, *params):

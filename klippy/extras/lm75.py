@@ -77,7 +77,7 @@ class LM75:
         if self.temp < self.min_temp or self.temp > self.max_temp:
             self.printer.invoke_shutdown(
                 "LM75 temperature %0.1f outside range of %0.1f:%.01f"
-                % (self.temp, self.min_temp, self.max_temp))
+                % (self.temp, self.min_temp, self.max_temp), 85, self.temp, self.min_temp, self.max_temp)
 
         measured_time = self.reactor.monotonic()
         self._callback(self.mcu.estimated_print_time(measured_time), self.temp)

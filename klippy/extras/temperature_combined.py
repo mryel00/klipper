@@ -77,7 +77,7 @@ class PrinterSensorCombined:
             self.printer.invoke_shutdown(
                 "COMBINED SENSOR maximum deviation exceeded limit of %0.1f, "
                 "max sensor value %0.1f, min sensor value %0.1f."
-                % (self.max_deviation, max(values), min(values),))
+                % (self.max_deviation, max(values), min(values),), 71, self.max_deviation, max(values), min(values))
 
         temp = self.apply_mode(values)
         if temp:
@@ -99,12 +99,12 @@ class PrinterSensorCombined:
             self.printer.invoke_shutdown(
                 "COMBINED SENSOR temperature %0.1f "
                 "below minimum temperature of %0.1f."
-                % (self.last_temp, self.min_temp,))
+                % (self.last_temp, self.min_temp,), 72, self.last_temp, self.min_temp)
         if self.last_temp > self.max_temp:
             self.printer.invoke_shutdown(
                 "COMBINED SENSOR temperature %0.1f "
                 "above maximum temperature of %0.1f."
-                % (self.last_temp, self.max_temp,))
+                % (self.last_temp, self.max_temp,), 73, self.last_temp, self.max_temp)
 
         # this is copied from temperature_host to enable time triggered updates
         # get mcu and measured / current(?) time

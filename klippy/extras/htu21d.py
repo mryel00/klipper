@@ -218,7 +218,7 @@ class HTU21D:
         if self.temp < self.min_temp or self.temp > self.max_temp:
             self.printer.invoke_shutdown(
                 "HTU21D temperature %0.1f outside range of %0.1f:%.01f"
-                % (self.temp, self.min_temp, self.max_temp))
+                % (self.temp, self.min_temp, self.max_temp), 84, self.temp, self.min_temp, self.max_temp)
 
         measured_time = self.reactor.monotonic()
         print_time = self.i2c.get_mcu().estimated_print_time(measured_time)

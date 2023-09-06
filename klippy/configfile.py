@@ -5,13 +5,26 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 import sys, os, glob, re, time, logging, configparser, io
 
-error = configparser.Error
+# exception classes
+class KlippyError(configparser.Error):
+    """Base class for ConfigParser exceptions."""
+
+    def __init__(self, msg='', code=0, *variables):
+        self.message = msg
+        self.code = code
+        self.variables = variables
+        Exception.__init__(self, msg)
+
+    def to_tuple(self):
+        return (self.message, self.code, self.variables)
+
+error = KlippyError
 
 class sentinel:
     pass
 
 class ConfigWrapper:
-    error = configparser.Error
+    error = KlippyError
     def __init__(self, printer, fileconfig, access_tracking, section):
         self.printer = printer
         self.fileconfig = fileconfig
@@ -30,14 +43,14 @@ class ConfigWrapper:
                     self.access_tracking[acc_id] = default
                 return default
             raise error("Option '%s' in section '%s' must be specified"
-                        % (option, self.section))
+                        % (option, self.section), 61, option, self.section)
         try:
             v = parser(self.section, option)
         except self.error as e:
             raise
         except:
             raise error("Unable to parse option '%s' in section '%s'"
-                        % (option, self.section))
+                        % (option, self.section), 62, option, self.section)
         if note_valid:
             self.access_tracking[(self.section.lower(), option.lower())] = v
         if minval is not None and v < minval:

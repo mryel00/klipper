@@ -182,7 +182,7 @@ class TMCErrorCheck:
             if self.adc_temp_reg is not None:
                 self._query_temperature()
         except self.printer.command_error as e:
-            self.printer.invoke_shutdown(str(e))
+            self.printer.invoke_shutdown(str(e), 21, str(e))
             return self.printer.get_reactor().NEVER
         return eventtime + 1.
     def stop_checks(self):
@@ -367,7 +367,7 @@ class TMCCommandHelper:
                 self.printer.lookup_object('toolhead').wait_moves()
                 self._handle_sync_mcu_pos(self.stepper)
         except self.printer.command_error as e:
-            self.printer.invoke_shutdown(str(e))
+            self.printer.invoke_shutdown(str(e), 22, str(e))
     def _do_disable(self, print_time):
         try:
             if self.toff is not None:
@@ -376,7 +376,7 @@ class TMCCommandHelper:
                 self.mcu_tmc.set_register(reg_name, val, print_time)
             self.echeck_helper.stop_checks()
         except self.printer.command_error as e:
-            self.printer.invoke_shutdown(str(e))
+            self.printer.invoke_shutdown(str(e), 23, str(e))
     def _handle_mcu_identify(self):
         # Lookup stepper object
         force_move = self.printer.lookup_object("force_move")

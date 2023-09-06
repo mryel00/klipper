@@ -204,7 +204,7 @@ class GCodeDispatch:
             except:
                 msg = 'Internal error on command:"%s"' % (cmd,)
                 logging.exception(msg)
-                self.printer.invoke_shutdown(msg)
+                self.printer.invoke_shutdown(msg, 20, cmd)
                 self._respond_error(msg)
                 if not need_ack:
                     raise
@@ -306,7 +306,7 @@ class GCodeDispatch:
         pass
     def cmd_M112(self, gcmd):
         # Emergency Stop
-        self.printer.invoke_shutdown("Shutdown due to M112 command")
+        self.printer.invoke_shutdown("Shutdown due to M112 command", 12)
     def cmd_M115(self, gcmd):
         # Get Firmware Version and Capabilities
         software_version = self.printer.get_start_args().get('software_version')

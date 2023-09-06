@@ -60,8 +60,8 @@ class DS18B20:
         self.min_temp = min_temp
         self.max_temp = max_temp
 
-    def fault(self, msg):
-        self.printer.invoke_async_shutdown(msg)
+    def fault(self, msg, code_shutdown=0, *variables):
+        self.printer.invoke_async_shutdown(msg, code_shutdown, *variables)
 
     def get_report_time_delta(self):
         return self.report_time

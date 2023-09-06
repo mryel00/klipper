@@ -86,7 +86,7 @@ class HeaterCheck:
     def heater_fault(self):
         msg = "Heater %s not heating at expected rate" % (self.heater_name,)
         logging.error(msg)
-        self.printer.invoke_shutdown(msg + HINT_THERMAL)
+        self.printer.invoke_shutdown(msg + HINT_THERMAL, 30, self.heater_name)
         return self.printer.get_reactor().NEVER
 
 def load_config_prefix(config):

@@ -266,7 +266,7 @@ class BME280:
         if self.temp < self.min_temp or self.temp > self.max_temp:
             self.printer.invoke_shutdown(
                 "BME280 temperature %0.1f outside range of %0.1f:%.01f"
-                % (self.temp, self.min_temp, self.max_temp))
+                % (self.temp, self.min_temp, self.max_temp), 82, self.temp, self.min_temp, self.max_temp)
         measured_time = self.reactor.monotonic()
         self._callback(self.mcu.estimated_print_time(measured_time), self.temp)
         return measured_time + REPORT_TIME
@@ -329,7 +329,7 @@ class BME280:
         if self.temp < self.min_temp or self.temp > self.max_temp:
             self.printer.invoke_shutdown(
                 "BME680 temperature %0.1f outside range of %0.1f:%.01f"
-                % (self.temp, self.min_temp, self.max_temp))
+                % (self.temp, self.min_temp, self.max_temp), 83, self.temp, self.min_temp, self.max_temp)
         measured_time = self.reactor.monotonic()
         self._callback(self.mcu.estimated_print_time(measured_time), self.temp)
         return measured_time + REPORT_TIME

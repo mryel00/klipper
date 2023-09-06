@@ -261,7 +261,7 @@ class ClientConnection:
                    % (web_request.get_method()))
             logging.exception(msg)
             web_request.set_error(WebRequestError(str(e)))
-            self.printer.invoke_shutdown(msg)
+            self.printer.invoke_shutdown(msg, 5, web_request.get_method())
         result = web_request.finish()
         if result is None:
             return
@@ -274,7 +274,7 @@ class ClientConnection:
         except (TypeError, ValueError) as e:
             msg = ("json encoding error: %s" % (str(e),))
             logging.exception(msg)
-            self.printer.invoke_shutdown(msg)
+            self.printer.invoke_shutdown(msg, 6, str(e))
             return
         if not self.is_blocking:
             self._do_send()
@@ -351,7 +351,7 @@ class WebHooks:
         client_info = web_request.get_dict('client_info', None)
         if client_info is not None:
             web_request.get_client_connection().set_client_info(client_info)
-        state_message, state, state_code = self.printer.get_state_message()
+        state_message, state, state_code, state_variables = self.printer.get_state_message()
         src_path = os.path.dirname(__file__)
         klipper_path = os.path.normpath(os.path.join(src_path, ".."))
         response = {'state': state,
@@ -362,14 +362,15 @@ class WebHooks:
                     'process_id': os.getpid(),
                     'user_id': os.getuid(),
                     'group_id': os.getgid(),
-                    'state_code': state_code}
+                    'state_code': state_code,
+                    'state_variables': list(state_variables)}
         start_args = self.printer.get_start_args()
         for sa in ['log_file', 'config_file', 'software_version', 'cpu_info']:
             response[sa] = start_args.get(sa)
         web_request.send(response)
 
     def _handle_estop_request(self, web_request):
-        self.printer.invoke_shutdown("Shutdown due to webhooks request")
+        self.printer.invoke_shutdown("Shutdown due to webhooks request", 7)
 
     def _handle_rpc_registration(self, web_request):
         template = web_request.get_dict('response_template')
@@ -391,8 +392,8 @@ class WebHooks:
         return cb
 
     def get_status(self, eventtime):
-        state_message, state, state_code = self.printer.get_state_message()
-        return {'state': state, 'state_message': state_message, 'state_code': state_code}
+        state_message, state, state_code, state_variables = self.printer.get_state_message()
+        return {'state': state, 'state_message': state_message, 'state_code': state_code, 'state_variables': list(state_variables)}
 
     def stats(self, eventtime):
         return self.sconn.stats(eventtime)

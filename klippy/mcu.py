@@ -646,7 +646,7 @@ class MCU:
     def _handle_starting(self, params):
         if not self._is_shutdown:
             self._printer.invoke_async_shutdown("MCU '%s' spontaneous restart"
-                                                % (self._name,))
+                                                % (self._name,), 31, self._name)
     # Connection phase
     def _check_restart(self, reason):
         start_reason = self._printer.get_start_args().get("start_reason")
@@ -978,7 +978,7 @@ class MCU:
         logging.info("Timeout with MCU '%s' (eventtime=%f)",
                      self._name, eventtime)
         self._printer.invoke_shutdown("Lost communication with MCU '%s'" % (
-            self._name,))
+            self._name,), 3, self._name)
     def get_status(self, eventtime=None):
         return dict(self._get_status_info)
     def stats(self, eventtime):
